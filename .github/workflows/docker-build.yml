@@ -1,0 +1,28 @@
+name: Docker Validation
+
+on:
+  push:
+    paths:
+      - 'docker-compose.yml'
+      - '.dockerignore'
+      - 'devception-server/Dockerfile'
+      - 'devception-client/Dockerfile'
+      - '.github/workflows/docker-build.yml'
+  pull_request:
+    paths:
+      - 'docker-compose.yml'
+      - '.dockerignore'
+      - 'devception-server/Dockerfile'
+      - 'devception-client/Dockerfile'
+      - '.github/workflows/docker-build.yml'
+
+jobs:
+  validate-docker:
+    name: Validate Docker Compose Configuration
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Validate docker-compose file syntax
+        run: docker compose config

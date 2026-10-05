@@ -1,0 +1,87 @@
+version: '3.8'
+
+services:
+  mongo:
+    image: mongo:7.0
+    container_name: devception-mongo
+    restart: unless-stopped
+    ports:
+      - '27017:27017'
+    volumes:
+      - mongo_data:/data/db
+    healthcheck:
+      test: ['CMD', 'mongosh', '--eval', 'db.runCommand("ping").ok']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - devception-net
+
+  redis:
+    image: redis:7-alpine
+    container_name: devception-redis
+    restart: unless-stopped
+    ports:
+      - '6379:6379'
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - devception-net
+
+  devception-server:
+    build:
+      context: ./devception-server
+      dockerfile: Dockerfile
+    container_name: devception-server
+    restart: unless-stopped
+    ports:
+      - '5000:4000'
+    environment:
+      - PORT=4000
+      - NODE_ENV=production
+      - MONGO_URI=mongodb://mongo:27017/devception
+      - REDIS_URL=redis://redis:6379
+      - JWT_SECRET=devception_super_secret_jwt_key_local_dev
+      - CLIENT_ORIGIN=http://localhost:3000
+      - PLATFORM=docker
+    depends_on:
+      mongo:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - devception-net
+
+  devception-client:
+    build:
+      context: ./devception-client
+      dockerfile: Dockerfile
+    container_name: devception-client
+    restart: unless-stopped
+    ports:
+      - '3000:3000'
+    environment:
+      - NODE_ENV=production
+      - NEXT_PUBLIC_API_URL=http://localhost:5000
+      - NEXT_PUBLIC_SOCKET_URL=http://localhost:5000
+      - NEXTAUTH_URL=http://localhost:3000
+      - NEXTAUTH_SECRET=devception_client_auth_secret_local
+    depends_on:
+      - devception-server
+    networks:
+      - devception-net
+
+networks:
+  devception-net:
+    driver: bridge
+
+volumes:
+  mongo_data:
+    driver: local
+  redis_data:
+    driver: local
